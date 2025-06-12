@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Colors } from '../shared/tokens';
 
@@ -6,29 +6,41 @@ type HabitItemProps = {
   name: string;
   isDone: boolean;
   onToggle: () => void;
+  onEdit: () => void;
 };
 
-export default function HabitItem({ name, isDone, onToggle }: HabitItemProps) {
+function HabitItem({ name, isDone, onToggle, onEdit }: HabitItemProps) {
   return (
-    <TouchableOpacity style={styles.container_habit} onPress={onToggle}>
+    <View style={styles.container_habit}>
+      <TouchableOpacity style={styles.nameContainer} onPress={onEdit}>
         <Text style={styles.name}>{name}</Text>
-      <View style={[styles.checkbox, isDone && styles.checkboxDone]}>
+      </TouchableOpacity>
+      <TouchableOpacity style={[styles.checkbox, isDone && styles.checkboxDone]} onPress={onToggle}>
         {isDone && <Text style={styles.checkmark}>✓</Text>}
-      </View>
-      
-    </TouchableOpacity>
+      </TouchableOpacity>
+    </View>
   );
 }
+
+export default memo(HabitItem);
 
 const styles = StyleSheet.create({
   container_habit: {
     flexDirection: 'row',
-    justifyContent:'space-between',
+    justifyContent: 'space-between',
     alignItems: 'center',
     padding: 10,
-    backgroundColor:Colors.white,
+    backgroundColor: Colors.white,
     borderRadius: 10,
     marginBottom: 10,
+  },
+  nameContainer: {
+    flex: 1,
+    paddingRight: 10,
+  },
+  name: {
+    color: Colors.gray,
+    fontSize: 16,
   },
   checkbox: {
     width: 34,
@@ -38,7 +50,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
   },
   checkboxDone: {
     backgroundColor: Colors.blue,
@@ -46,10 +57,6 @@ const styles = StyleSheet.create({
   },
   checkmark: {
     color: Colors.white,
-    fontSize: 16,
-  },
-  name: {
-    color: Colors.gray,
     fontSize: 16,
   },
 });

@@ -11,7 +11,8 @@ import CalendarScreen from './src/screens/CalendarScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import { AuthService } from './src/services/auth.service';
 import { Colors } from './src/shared/tokens';
-
+import ApiScreen from './src/screens/ApiScreen';
+import { HabitProvider } from './src/context/HabitContext';
 type User = {
   login: string;
   email: string;
@@ -22,7 +23,7 @@ const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 // допустимые имена иконок
-type IconName = 'home' | 'home-outline' | 'calendar' | 'calendar-outline' | 'person' | 'person-outline';
+type IconName = 'home' | 'home-outline' | 'calendar' | 'calendar-outline' | 'person' | 'person-outline' | 'cloud' | 'cloud-outline';
 
 function MainTabs() {
   return (
@@ -36,6 +37,8 @@ function MainTabs() {
             iconName = focused ? 'calendar' : 'calendar-outline';
           } else if (route.name === 'Profile') {
             iconName = focused ? 'person' : 'person-outline';
+          } else if (route.name === 'Api') {
+            iconName = focused ? 'cloud' : 'cloud-outline';
           } else {
             iconName = 'home'; 
           }
@@ -60,6 +63,11 @@ function MainTabs() {
         name="Profile"
         component={ProfileScreen}
         options={{ headerShown: false, title: 'Профиль' }}
+      />
+      <Tab.Screen
+        name="Api"
+        component={ApiScreen}
+        options={{ headerShown: false, title: 'API' }}
       />
     </Tab.Navigator>
   );
@@ -93,7 +101,8 @@ export default function App() {
   }
 
   return (
-    <NavigationContainer>
+    <HabitProvider>
+        <NavigationContainer>
       <Stack.Navigator initialRouteName={user ? 'Main' : 'Auth'}>
         <Stack.Screen
           name="Auth"
@@ -107,5 +116,7 @@ export default function App() {
         />
       </Stack.Navigator>
     </NavigationContainer>
+    </HabitProvider>
+    
   );
 }

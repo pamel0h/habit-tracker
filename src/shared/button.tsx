@@ -42,7 +42,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.white,
     borderRadius: 8,
     borderWidth: 2,
-    height: 45,
+    height: 40,
     backgroundColor: 'transparent',
   },
   buttonPressed: {

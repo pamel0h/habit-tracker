@@ -1,88 +1,172 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, Text, Image, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, Text, TextInput, ActivityIndicator, ScrollView } from 'react-native';
 import { Colors } from '../shared/tokens';
 import { Button } from '../shared/button';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation';
-import { AuthService } from '../services/auth.service'; 
+import { AuthService } from '../services/auth.service';
+import { HabitService, Habit } from '../services/habit.service';
+import { BackHandler } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import HabitItem from '../components/HabitItem';
 
-export default function HomeScreen(){
-    const [userLogin, setUserLogin] = useState<string | null>(null); // null - значит еще загружается
-    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'Home'>>();
-    
-    useEffect(() => {
-        const loadUserLogin = async () => {
-          try {
-            const userData = await AsyncStorage.getItem('currentUser');
-            if (userData) {
-              const user = JSON.parse(userData);
-              setUserLogin(user.login);
-            } else {
-              setUserLogin(''); // Пустая строка - значит гость
-            }
-          } catch (error) {
-            console.error('Ошибка загрузки пользователя:', error);
-            setUserLogin(''); // В случае ошибки тоже считаем гостем
-          }
-        };
-    
-        loadUserLogin();
-      }, []);
-    
-      // Показываем индикатор загрузки, если данные еще не загружены
-      if (userLogin === null) {
-        return (
-          <View style={[styles.container, styles.loadingContainer]}>
-            <ActivityIndicator size="large" color={Colors.blue} />
-          </View>
-        );
+export default function HomeScreen() {
+  const [userLogin, setUserLogin] = useState<string | null>(null);
+  const [habits, setHabits] = useState<Habit[]>([]);
+  const [newHabitName, setNewHabitName] = useState('');
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'Home'>>();
+  const today = new Date().toISOString().split('T')[0]; 
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const userData = await AsyncStorage.getItem('currentUser');
+        if (userData) {
+          const user = JSON.parse(userData);
+          setUserLogin(user.login);
+        } else {
+          setUserLogin('');
+        }
+        const habits = await HabitService.getHabitsForDate(today);
+        setHabits(habits);
+      } catch (error) {
+        console.error('Error loading data:', error);
+        setUserLogin('');
       }
+    };
 
-    return (
-        <View style={styles.container}>
-            <View style={styles.content}>
-                <Text style={styles.welcome}>Привет,  {userLogin || 'Гость'}!</Text>
-                <Image
-                    style = {styles.bot}
-                    source={require('../../assets/bot.png')}
-                    resizeMode='contain'
-                />
-                <Button text='Выйти' onPress={async () => {
-                    await AuthService.logout(); // Очищаем данные
-                    navigation.navigate('Auth'); // Переходим на экран входа
-                }}></Button>
-            </View>
-        </View>
+    loadData();
+  }, []);
+
+  useEffect(() => {
+    const backAction = () => {
+      BackHandler.exitApp();
+      return true;
+    };
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+    return () => backHandler.remove();
+  }, []);
+
+  const toggleHabit = async (id: number) => {
+    const updatedHabits = habits.map(habit =>
+      habit.id === id ? { ...habit, isDone: !habit.isDone } : habit
     );
-};
+    setHabits(updatedHabits);
+    await HabitService.saveHabitsForDate(today, updatedHabits);
+  };
+
+  const addHabit = async () => {
+    if (newHabitName.trim()) {
+      await HabitService.addHabit(today, newHabitName);
+      const updatedHabits = await HabitService.getHabitsForDate(today);
+      setHabits(updatedHabits);
+      setNewHabitName('');
+    }
+  };
+
+  const progress = habits.length
+    ? Math.round((habits.filter(h => h.isDone).length / habits.length) * 100)
+    : 0;
+
+  if (userLogin === null) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color={Colors.blue} />
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={styles.linearLayout}>
+        <Text style={styles.welcome}>Привет, {userLogin || 'Гость'}!</Text>
+        <Text style={styles.progress}>Прогресс: {progress}%</Text>
+        <View style={styles.addHabit}>
+          <TextInput
+            style={styles.input}
+            placeholder="Новая привычка..."
+            placeholderTextColor={Colors.gray}
+            value={newHabitName}
+            onChangeText={setNewHabitName}
+          />
+          <Button style={styles.buttonAdd} text="+" onPress={addHabit} />
+        </View>
+        <Text style={styles.myHabitList}>Мои привычки</Text>
+        <View style={styles.habitList}>
+          {habits.map(habit => (
+            <HabitItem
+              key={habit.id}
+              name={habit.name}
+              isDone={habit.isDone}
+              onToggle={() => toggleHabit(habit.id)}
+            />
+          ))}
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
-    container:{
-       flex:1,
-       justifyContent:'center',
-       alignItems:'center',
-       backgroundColor:Colors.black,
-       padding:36,
-    },
-    content:{
-        
-        gap:30,
+  container: {
+    flex: 1,
+    backgroundColor: Colors.black,
+    paddingTop:60,
+    
+  },
+  linearLayout: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 20,
+    paddingHorizontal:20,
+    paddingBottom: 20,
+  },
+  welcome: {
+    width:'100%',
+    color: Colors.white,
+    fontSize: 28,
+    fontWeight: 'bold',
+  },
+  progress: {
+    color: Colors.blue,
+    fontSize: 20,
+    height: 320,
+    backgroundColor:Colors.white,
+    width:'100%',
+    textAlign:'center',
+    padding:20,
+    borderRadius:20
+  },
+  myHabitList:{
+    color:Colors.white
+  },
+  habitList: {
+    width: '100%',
+  },
+  addHabit:{
+    flexDirection:'row',
+    gap:10,
+    justifyContent:'space-between',
+    width:'100%'
 
-    },
-    bot:{
-        marginLeft:80,
-        width:150,
-        height:162
-    },
-    welcome:{
-        color:Colors.white,
-        fontSize:36,
-    },
-    loadingContainer: {
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-})
-
+  },
+  buttonAdd:{
+    borderRadius:40,
+    width:40,
+    
+  },
+  input: {
+    backgroundColor: Colors.white,
+    color: Colors.white,
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 10,
+    width:'85%',
+    height:40
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+});

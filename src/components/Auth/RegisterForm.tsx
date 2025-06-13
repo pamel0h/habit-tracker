@@ -3,10 +3,9 @@ import { View, StyleSheet, Text, TouchableOpacity, Alert } from 'react-native';
 import { Input } from '../../shared/input';
 import { Colors } from '../../shared/tokens';
 import { Button } from '../../shared/button';
-import { AuthService } from '../../services/auth.service';
 
 type RegisterFormProps = {
-  onAuthSuccess: () => void;
+  onAuthSuccess: (userData: { login: string; email: string; password: string }) => void; // Изменяем сигнатуру
   setLogin: (value: string) => void;
   setEmail: (value: string) => void;
   setPassword: (value: string) => void;
@@ -20,26 +19,19 @@ export default function RegisterForm({ onAuthSuccess, setLogin, setEmail, setPas
   const [isChecked, setIsChecked] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const handleRegister = async () => {
+  const handleRegister = () => {
     try {
       if (passwordLocal !== confirmPassword) {
         throw new Error('Пароли не совпадают');
       }
-      
       if (!isChecked) {
         throw new Error('Необходимо принять условия');
       }
-
       setIsLoading(true);
-      await AuthService.register({ 
-        login: loginLocal, 
-        email: emailLocal, 
-        password: passwordLocal 
-      });
-      setLogin(loginLocal); // Обновляем родительское состояние
-      setEmail(emailLocal); // Обновляем родительское состояние
-      setPassword(passwordLocal); // Обновляем родительское состояние
-      onAuthSuccess();
+      setLogin(loginLocal);
+      setEmail(emailLocal);
+      setPassword(passwordLocal);
+      onAuthSuccess({ login: loginLocal, email: emailLocal, password: passwordLocal });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Ошибка регистрации';
       Alert.alert('Ошибка', message);
@@ -80,7 +72,6 @@ export default function RegisterForm({ onAuthSuccess, setLogin, setEmail, setPas
         value={confirmPassword}
         onChangeText={setConfirmPassword}
       />
-      
       <View style={styles.checkboxContainer}>
         <Text style={styles.terms}>
           Согласен с  
@@ -93,7 +84,6 @@ export default function RegisterForm({ onAuthSuccess, setLogin, setEmail, setPas
           {isChecked && <View style={styles.innerCheck}/>}
         </TouchableOpacity> 
       </View>
-      
       <Button 
         text={isLoading ? 'Регистрация...' : 'Зарегистрироваться'}
         onPress={handleRegister}

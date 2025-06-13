@@ -26,6 +26,7 @@ export class AuthPresenter {
   async onLogin(loginOrEmail: string, password: string): Promise<void> {
     try {
       await AuthService.login(loginOrEmail, password);
+      console.log('Navigating to Main after login');
       this.view.navigateToMain();
     } catch (error: any) {
       console.error('Error during login:', error);
@@ -36,6 +37,7 @@ export class AuthPresenter {
   async onRegister(userData: { login: string; email: string; password: string }): Promise<void> {
     try {
       await AuthService.register(userData);
+      console.log('Navigating to Main after registration');
       this.view.navigateToMain();
     } catch (error: any) {
       console.error('Error during registration:', error);

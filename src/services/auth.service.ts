@@ -21,17 +21,23 @@ export const AuthService = {
 
     await AsyncStorage.setItem('users', JSON.stringify([...users, userData]));
     await AsyncStorage.setItem('currentUser', JSON.stringify(userData));
+    console.log('Registered user:', userData); // Отладочный лог
   },
 
   async login(loginOrEmail: string, password: string): Promise<User> {
     const users = await this.getAllUsers();
+    console.log('All users:', users); // Отладочный лог
     const user = users.find(u => 
       (u.login === loginOrEmail || u.email === loginOrEmail) && 
       u.password === password
     );
     
-    if (!user) throw new Error('Неверные данные');
+    if (!user) {
+      console.log('Login attempt failed - no user found for:', loginOrEmail, 'with password:', password); // Отладочный лог
+      throw new Error('Неверные данные');
+    }
     await AsyncStorage.setItem('currentUser', JSON.stringify(user));
+    console.log('Logged in user:', user); // Отладочный лог
     return user;
   },
 
@@ -46,8 +52,8 @@ export const AuthService = {
 
   // Вспомогательные методы (условно "private")
   validateEmail(email: string): boolean {
-    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return re.test(email);
+    const re = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+    return re.test(email.toLowerCase());
   },
 
   async getAllUsers(): Promise<User[]> {

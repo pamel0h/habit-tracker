@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Image, Alert } from 'react-native';
 import AuthToggle from '../../components/Auth/AuthToggle';
 import LoginForm from '../../components/Auth/LoginForm';
@@ -9,6 +9,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation';
 import AnimatedRobot from '../../../assets/animated-robot';
 import { AuthPresenter, AuthView } from './AuthPresenter';
+import { AuthService } from '../../services/auth.service';
 
 export default function AuthScreen() {
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
@@ -24,6 +25,24 @@ export default function AuthScreen() {
     navigateToMain: () => navigation.navigate('Main'),
   });
 
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      const user = await AuthService.checkAuth();
+      if (user) {
+        navigation.navigate('Main');
+      }
+    };
+    checkAuthStatus();
+  }, [navigation]);
+
+  const handleAuthSuccess = (data: { loginOrEmail?: string; password?: string; login?: string; email?: string }) => {
+    if (activeTab === 'login' && data.loginOrEmail && data.password) {
+      presenter.onLogin(data.loginOrEmail, data.password);
+    } else if (activeTab === 'register' && data.login && data.email && data.password) {
+      presenter.onRegister({ login: data.login, email: data.email, password: data.password });
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.linearLayout}>
@@ -32,13 +51,13 @@ export default function AuthScreen() {
         <AnimatedRobot />
         {activeTab === 'login' ? (
           <LoginForm
-            onAuthSuccess={() => presenter.onLogin(loginOrEmail, password)}
+            onAuthSuccess={(loginOrEmail, password) => handleAuthSuccess({ loginOrEmail, password })}
             setLoginOrEmail={setLoginOrEmail}
             setPassword={setPassword}
           />
         ) : (
           <RegisterForm
-            onAuthSuccess={() => presenter.onRegister({ login, email, password })}
+            onAuthSuccess={(userData) => handleAuthSuccess(userData)}
             setLogin={setLogin}
             setEmail={setEmail}
             setPassword={setPassword}

@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { Input } from '../../shared/input';
 import { Button } from '../../shared/button';
-import { AuthService } from '../../services/auth.service';
 
 type LoginFormProps = {
-  onAuthSuccess: () => void;
+  onAuthSuccess: (loginOrEmail: string, password: string) => void; // Изменяем сигнатуру
   setLoginOrEmail: (value: string) => void;
   setPassword: (value: string) => void;
 };
@@ -15,20 +14,12 @@ export default function LoginForm({ onAuthSuccess, setLoginOrEmail, setPassword 
   const [passwordLocal, setPasswordLocal] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const handleLogin = async () => {
-    try {
-      setIsLoading(true);
-      const user = await AuthService.login(loginOrEmailLocal, passwordLocal);
-      console.log('Успешный вход:', user);
-      setLoginOrEmail(loginOrEmailLocal); // Обновляем родительское состояние
-      setPassword(passwordLocal); // Обновляем родительское состояние
-      onAuthSuccess();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Ошибка авторизации';
-      Alert.alert('Ошибка', message);
-    } finally {
-      setIsLoading(false);
-    }
+  const handleLogin = () => {
+    setIsLoading(true);
+    setLoginOrEmail(loginOrEmailLocal);
+    setPassword(passwordLocal);
+    onAuthSuccess(loginOrEmailLocal, passwordLocal); // Передаем данные в родительский компонент
+    setIsLoading(false);
   };
 
   const isFormValid = loginOrEmailLocal.trim() !== '' && passwordLocal.trim() !== '';

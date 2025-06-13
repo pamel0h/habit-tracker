@@ -1,26 +1,28 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Alert } from 'react-native';
+import { View, StyleSheet, Alert } from 'react-native';
 import { Input } from '../../shared/input';
 import { Button } from '../../shared/button';
 import { AuthService } from '../../services/auth.service';
 
-
-// Тип для пропсов компонента
 type LoginFormProps = {
   onAuthSuccess: () => void;
+  setLoginOrEmail: (value: string) => void;
+  setPassword: (value: string) => void;
 };
 
-export default function LoginForm({ onAuthSuccess }: LoginFormProps) {
-  const [loginOrEmail, setLoginOrEmail] = useState<string>('');
-  const [password, setPassword] = useState<string>('');
+export default function LoginForm({ onAuthSuccess, setLoginOrEmail, setPassword }: LoginFormProps) {
+  const [loginOrEmailLocal, setLoginOrEmailLocal] = useState<string>('');
+  const [passwordLocal, setPasswordLocal] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const handleLogin = async () => {
     try {
       setIsLoading(true);
-      const user = await AuthService.login(loginOrEmail, password);
+      const user = await AuthService.login(loginOrEmailLocal, passwordLocal);
       console.log('Успешный вход:', user);
-      onAuthSuccess(); // Вызываем после успешной авторизации
+      setLoginOrEmail(loginOrEmailLocal); // Обновляем родительское состояние
+      setPassword(passwordLocal); // Обновляем родительское состояние
+      onAuthSuccess();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Ошибка авторизации';
       Alert.alert('Ошибка', message);
@@ -29,23 +31,22 @@ export default function LoginForm({ onAuthSuccess }: LoginFormProps) {
     }
   };
 
-  const isFormValid = loginOrEmail.trim() !== '' && password.trim() !== '';
+  const isFormValid = loginOrEmailLocal.trim() !== '' && passwordLocal.trim() !== '';
 
   return (
     <View style={styles.form}>
-
-      <Input 
+      <Input
         placeholder="Логин/Email"
-        value={loginOrEmail}
-        onChangeText={setLoginOrEmail}
+        value={loginOrEmailLocal}
+        onChangeText={setLoginOrEmailLocal}
       />
-      <Input 
-        isPassword 
+      <Input
+        isPassword
         placeholder="Пароль"
-        value={password}
-        onChangeText={setPassword}
+        value={passwordLocal}
+        onChangeText={setPasswordLocal}
       />
-      <Button 
+      <Button
         text={isLoading ? 'Вход...' : 'Войти'}
         onPress={handleLogin}
         disabled={!isFormValid || isLoading}

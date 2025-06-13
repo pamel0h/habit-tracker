@@ -7,19 +7,22 @@ import { AuthService } from '../../services/auth.service';
 
 type RegisterFormProps = {
   onAuthSuccess: () => void;
+  setLogin: (value: string) => void;
+  setEmail: (value: string) => void;
+  setPassword: (value: string) => void;
 };
 
-export default function RegisterForm({ onAuthSuccess }: RegisterFormProps) {
-  const [login, setLogin] = useState<string>('');
-  const [email, setEmail] = useState<string>('');
-  const [password, setPassword] = useState<string>('');
+export default function RegisterForm({ onAuthSuccess, setLogin, setEmail, setPassword }: RegisterFormProps) {
+  const [loginLocal, setLoginLocal] = useState<string>('');
+  const [emailLocal, setEmailLocal] = useState<string>('');
+  const [passwordLocal, setPasswordLocal] = useState<string>('');
   const [confirmPassword, setConfirmPassword] = useState<string>('');
   const [isChecked, setIsChecked] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const handleRegister = async () => {
     try {
-      if (password !== confirmPassword) {
+      if (passwordLocal !== confirmPassword) {
         throw new Error('Пароли не совпадают');
       }
       
@@ -29,10 +32,13 @@ export default function RegisterForm({ onAuthSuccess }: RegisterFormProps) {
 
       setIsLoading(true);
       await AuthService.register({ 
-        login, 
-        email, 
-        password 
+        login: loginLocal, 
+        email: emailLocal, 
+        password: passwordLocal 
       });
+      setLogin(loginLocal); // Обновляем родительское состояние
+      setEmail(emailLocal); // Обновляем родительское состояние
+      setPassword(passwordLocal); // Обновляем родительское состояние
       onAuthSuccess();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Ошибка регистрации';
@@ -42,31 +48,31 @@ export default function RegisterForm({ onAuthSuccess }: RegisterFormProps) {
     }
   };
 
-  const isFormValid = login.trim().length > 0 && 
-                     email.trim().length > 0 && 
-                     password.trim().length >= 6 && 
-                     password === confirmPassword && 
+  const isFormValid = loginLocal.trim().length > 0 && 
+                     emailLocal.trim().length > 0 && 
+                     passwordLocal.trim().length >= 6 && 
+                     passwordLocal === confirmPassword && 
                      isChecked;
 
   return (
     <View style={styles.form}>
       <Input 
         placeholder="Логин"
-        value={login}
-        onChangeText={setLogin}
+        value={loginLocal}
+        onChangeText={setLoginLocal}
       />
       <Input 
         placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
+        value={emailLocal}
+        onChangeText={setEmailLocal}
         keyboardType="email-address"
         autoCapitalize="none"
       />
       <Input 
         isPassword 
         placeholder="Пароль (мин. 6 символов)"
-        value={password}
-        onChangeText={setPassword}
+        value={passwordLocal}
+        onChangeText={setPasswordLocal}
       />
       <Input 
         isPassword 
@@ -76,7 +82,7 @@ export default function RegisterForm({ onAuthSuccess }: RegisterFormProps) {
       />
       
       <View style={styles.checkboxContainer}>
-      <Text style={styles.terms}>
+        <Text style={styles.terms}>
           Согласен с  
           <Text style={styles.link}> правилами пользования</Text>
         </Text>
@@ -127,10 +133,9 @@ const styles = StyleSheet.create({
   },
   terms: {
     fontSize: 12,
-    color:'#969393'
+    color: '#969393'
   },
   link: {
     color: Colors.blue,
   }
 });
-

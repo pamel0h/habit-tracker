@@ -1,10 +1,11 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { View, StyleSheet, Text, ScrollView, Modal, TextInput } from 'react-native';
-import { Colors } from '../shared/tokens';
+import React, { useEffect, useState } from 'react';
+import { View, StyleSheet, Text, ScrollView, Modal, TextInput, Alert } from 'react-native';
+import { Colors } from '../../shared/tokens';
 import { Calendar, DateData } from 'react-native-calendars';
-import { HabitService, Habit } from '../services/habit.service';
-import HabitItem from '../components/HabitItem';
-import { Button } from '../shared/button';
+import { Habit } from '../../services/habit.service';
+import HabitItem from '../../components/HabitItem';
+import { Button } from '../../shared/button';
+import { CalendarPresenter, CalendarView } from './CalendarPresenter';
 
 type MarkedDates = {
   [date: string]: { marked: boolean; dotColor: string };
@@ -18,99 +19,22 @@ export default function CalendarScreen() {
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
   const [editHabitName, setEditHabitName] = useState('');
 
-  const loadProgress = useCallback(async () => {
-  try {
-    const dates: MarkedDates = {};
-    const allDates = await HabitService.getAllHabitDates();
-    for (const date of allDates) {
-      const habits = await HabitService.getHabitsForDate(date);
-      if (habits.length > 0) {
-        dates[date] = {
-          marked: habits.some(h => h.isDone),
-          dotColor: habits.some(h => h.isDone) ? Colors.blue : Colors.gray,
-        };
-      }
-    }
-    console.log('Updated markedDates:', dates);
-    setMarkedDates(dates);
-  } catch (error) {
-    console.error('Error loading progress:', error);
-  }
-}, []);
-
-
-
-  const loadHabits = useCallback(async (date: string) => {
-    const habits = await HabitService.getHabitsForDate(date);
-    setHabits(habits);
-    console.log(`Loaded habits for ${date}:`, habits);
-  }, []);
+  const presenter = new CalendarPresenter({
+    setMarkedDates,
+    setSelectedDate,
+    setHabits,
+    openEditModal: (habit: Habit) => {
+      setSelectedHabit(habit);
+      setModalVisible(true);
+    },
+    closeEditModal: () => setModalVisible(false),
+    setEditHabitName,
+    showError: (error: string) => Alert.alert('Ошибка', error),
+  });
 
   useEffect(() => {
-    const today = new Date().toISOString().split('T')[0];
-    setSelectedDate(today);
-    loadHabits(today);
-    loadProgress();
-    HabitService.debugAsyncStorage();
-  }, [loadHabits, loadProgress]);
-
-  const handleDayPress = useCallback(async (day: DateData) => {
-  try {
-    const date = day.dateString;
-    setSelectedDate(date);
-    // Проверяем, есть ли привычки для выбранной даты, если нет — копируем из последнего дня
-    const habits = await HabitService.getHabitsForDate(date);
-    if (habits.length === 0) {
-      console.log(`No habits for ${date}, attempting to copy from last day`);
-      await HabitService.copyHabitsToNewDay(date);
-    }
-    await loadHabits(date);
-    await loadProgress();
-  } catch (error) {
-    console.error('Error handling day press:', error);
-  }
-}, [loadHabits, loadProgress]);
-
-  const toggleHabit = useCallback(async (id: number) => {
-    if (!selectedDate) return;
-    const updatedHabits = habits.map(habit =>
-      habit.id === id ? { ...habit, isDone: !habit.isDone } : habit
-    );
-    setHabits(updatedHabits);
-    await HabitService.saveHabitsForDate(selectedDate, updatedHabits);
-    await loadProgress();
-    await HabitService.debugAsyncStorage();
-  }, [habits, selectedDate, loadProgress]);
-
-  const openEditModal = useCallback((habit: Habit) => {
-    setSelectedHabit(habit);
-    setEditHabitName(habit.name);
-    setModalVisible(true);
+    presenter.onViewMounted();
   }, []);
-
-  const saveEditedHabit = useCallback(async () => {
-    if (!selectedHabit || !editHabitName.trim() || !selectedDate) return;
-    try {
-      await HabitService.updateHabit(selectedDate, selectedHabit.id, editHabitName);
-      await loadHabits(selectedDate);
-      await loadProgress();
-      setModalVisible(false);
-    } catch (error) {
-      console.error('Error updating habit:', error);
-    }
-  }, [selectedHabit, editHabitName, selectedDate, loadHabits, loadProgress]);
-
-  const deleteHabit = useCallback(async () => {
-    if (!selectedHabit || !selectedDate) return;
-    try {
-      await HabitService.deleteHabit(selectedDate, selectedHabit.id);
-      await loadHabits(selectedDate);
-      await loadProgress();
-      setModalVisible(false);
-    } catch (error) {
-      console.error('Error deleting habit:', error);
-    }
-  }, [selectedHabit, selectedDate, loadHabits, loadProgress]);
 
   return (
     <View style={styles.container}>
@@ -119,7 +43,7 @@ export default function CalendarScreen() {
         <Calendar
           style={styles.calendar}
           markedDates={markedDates}
-          onDayPress={handleDayPress}
+          onDayPress={(day: DateData) => presenter.onDayPress(day.dateString)}
           initialDate={new Date().toISOString().split('T')[0]}
           theme={{
             backgroundColor: Colors.black,
@@ -146,8 +70,8 @@ export default function CalendarScreen() {
                     key={habit.id}
                     name={habit.name}
                     isDone={habit.isDone}
-                    onToggle={() => toggleHabit(habit.id)}
-                    onEdit={() => openEditModal(habit)}
+                    onToggle={() => presenter.onToggleHabit(habit.id)}
+                    onEdit={() => presenter.onEditHabit(habit)}
                   />
                 ))
               ) : (
@@ -156,12 +80,11 @@ export default function CalendarScreen() {
             </ScrollView>
           )}
         </View>
-
         <Modal
           animationType="slide"
           transparent={true}
           visible={modalVisible}
-          onRequestClose={() => setModalVisible(false)}
+          onRequestClose={() => presenter.closeEditModal()}
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
@@ -174,9 +97,9 @@ export default function CalendarScreen() {
                 placeholderTextColor={Colors.gray}
               />
               <View style={styles.modalButtons}>
-                <Button text="Сохранить" onPress={saveEditedHabit} />
-                <Button text="Удалить" onPress={deleteHabit} style={styles.deleteButton} />
-                <Button text="Отмена" onPress={() => setModalVisible(false)} />
+                <Button text="Сохранить" onPress={() => selectedHabit && presenter.onSaveEditedHabit(selectedHabit.id, editHabitName)} />
+                <Button text="Удалить" onPress={() => selectedHabit && presenter.onDeleteHabit(selectedHabit.id)} style={styles.deleteButton} />
+                <Button text="Отмена" onPress={() => presenter.closeEditModal()} />
               </View>
             </View>
           </View>

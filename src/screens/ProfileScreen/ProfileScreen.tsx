@@ -1,32 +1,25 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, Text, Image } from 'react-native';
-import AnimatedRobot from '../../assets/animated-robot';
-import { Colors } from '../shared/tokens';
-import { Button } from '../shared/button';
+import { View, StyleSheet, Text, Image, Alert } from 'react-native';
+import AnimatedRobot from '../../../assets/animated-robot';
+import { Colors } from '../../shared/tokens';
+import { Button } from '../../shared/button';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation';
-import { AuthService } from '../services/auth.service';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { RootStackParamList } from '../../navigation';
+import { ProfilePresenter, ProfileView } from './ProfilePresenter';
 
 export default function ProfileScreen() {
   const [user, setUser] = useState<{ login: string; email: string } | null>(null);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
-  useEffect(() => {
-    const loadUser = async () => {
-      try {
-        const userData = await AsyncStorage.getItem('currentUser');
-        if (userData) {
-          const parsedUser = JSON.parse(userData);
-          setUser({ login: parsedUser.login, email: parsedUser.email });
-        }
-      } catch (error) {
-        console.error('Error loading user:', error);
-      }
-    };
+  const presenter = new ProfilePresenter({
+    setUser,
+    showError: (error: string) => Alert.alert('Ошибка', error),
+    navigateToAuth: () => navigation.navigate('Auth'),
+  });
 
-    loadUser();
+  useEffect(() => {
+    presenter.onViewMounted();
   }, []);
 
   return (
@@ -38,10 +31,7 @@ export default function ProfileScreen() {
         <Button
           style={styles.logout}
           text="Выйти"
-          onPress={async () => {
-            await AuthService.logout();
-            navigation.navigate('Auth');
-          }}
+          onPress={() => presenter.onLogout()}
         />
       </View>
     </View>
@@ -72,7 +62,7 @@ const styles = StyleSheet.create({
     marginBottom: 40,
     textAlign: 'center',
   },
-  logout:{
-    width:'40%'
-  }
+  logout: {
+    width: '40%',
+  },
 });
